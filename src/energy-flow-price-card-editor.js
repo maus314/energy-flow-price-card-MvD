@@ -221,6 +221,13 @@ class EnergyFlowPriceCardEditor extends LitElement {
                 ></ha-entity-picker>
                 <ha-entity-picker
                   .hass=${this.hass}
+                  .value=${car.charging ?? ""}
+                  .label=${T("ed_car_charging")}
+                  allow-custom-entity
+                  @value-changed=${(e) => this._carChange(i, "charging", e)}
+                ></ha-entity-picker>
+                <ha-entity-picker
+                  .hass=${this.hass}
                   .value=${car.soc ?? ""}
                   .label=${T("ed_car_soc")}
                   allow-custom-entity

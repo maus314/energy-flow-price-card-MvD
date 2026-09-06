@@ -57,6 +57,7 @@ gas_price_entity: sensor.gas_price            # optional, shown next to the elec
 cars:
   - name: My car
     power: sensor.wallbox_power               # node appears only while charging (or with display_zero)
+    charging: binary_sensor.my_car_charging   # optional on/off; if power is active while this is off, a "Guest car" node is shown instead
     soc: sensor.car_soc                        # optional
 # colors (optional)
 color_solar: "#f5c518"
@@ -88,6 +89,7 @@ price_stops:
 - **Reduce effects:** `reduce_effects` (off by default; shown in the editor once visual layout is on) drops the neon style's glow filter and the house-photo text shadow — both are the kind of CSS effect that can cause tiling/block glitches on weaker Android GPUs (seen on some budget tablets). Everything else (animations, fades, colors) stays the same.
 - **Flow line style:** `wire_style` (`dashed` by default, or `neon`) controls how the four flow lines look, independent of the visual layout — `dashed` is the original moving-dash look; `neon` shows a calm green base line with an occasional glowing pulse that sweeps along it in the actual flow direction. Solar/grid lines now start above their wattage value, battery/car lines start below theirs, so the lines don't cross through the value text.
 - **Cars:** add one or more via the editor, each with its own name. With multiple cars you can choose auto-scroll (cycles automatically) or a static view. A car node appears only while charging (`power` > 5 W), unless *display zero* is on.
+- **Guest car detection:** set a car's `charging` field to an on/off entity (most EVs/wallboxes expose one) that reflects whether *that specific car* is actually charging. If the charger draws power while this entity is off, the power isn't going into your car — the card shows an extra "Guest car" node with that wattage instead, alongside your own (now idle) car node. It disappears again once the guest stops charging. Leave `charging` unset to keep the previous power-only behavior.
 - **Price:** works with any provider (Frank, Tibber, Nord Pool, ENTSO-e, Zonneplan...) as long as the value is in EUR/kWh. Window is adjustable from 8 to 48 hours, starting at midnight or now.
 - **Battery:** two separate sensors (charge W and discharge W), both positive.
 - **Home usage** is calculated automatically: `solar + grid + battery_discharge - battery_charge` (grid is +/-). No separate entity needed.
@@ -136,6 +138,7 @@ Voeg in een dashboard een card toe -> zoek **Energy Flow & Price Card** -> vul i
 - **Effecten beperken:** `reduce_effects` (standaard uit; verschijnt in de editor zodra visuele weergave aanstaat) zet het gloed-filter van de neon-stijl en de tekstschaduw van de huisfoto uit — precies het soort CSS-effect dat op zwakkere Android-GPU's (gezien bij sommige budget-tablets) blokjes/tegel-glitches kan veroorzaken. Al het andere (animaties, fades, kleuren) blijft hetzelfde.
 - **Stijl flow-lijnen:** `wire_style` (`dashed` standaard, of `neon`) bepaalt hoe de vier flow-lijnen eruitzien, los van de visuele weergave — `dashed` is de originele bewegende-streepjes-stijl; `neon` toont een rustige groene basislijn met af en toe een gloeiende puls die in de echte stroomrichting meebeweegt. De lijnen van solar/net beginnen nu boven hun wattage-waarde, die van accu/auto eronder, zodat ze niet meer dwars door de tekst lopen.
 - **Auto's:** voeg er een of meer toe via de editor, elk met een eigen naam. Bij meerdere auto's kies je auto-scroll (wisselt vanzelf) of een statische weergave. Een auto-node verschijnt alleen bij actief laden (`power` > 5 W), tenzij *display zero* aan staat.
+- **Gastauto herkennen:** stel bij een auto het veld `charging` in op een aan/uit-entiteit (de meeste auto's/laadpalen hebben er een) die aangeeft of *die specifieke auto* daadwerkelijk aan het laden is. Trekt de lader vermogen terwijl deze entiteit uit staat, dan gaat dat vermogen niet naar jouw auto — de kaart toont dan een extra "Gastauto"-node met dat wattage, naast je eigen (nu inactieve) auto-node. Zodra de gast stopt met laden verdwijnt deze weer. Laat `charging` leeg om het oude, alleen-op-vermogen-gebaseerde gedrag te behouden.
 - **Prijs:** werkt met elke leverancier (Frank, Tibber, Nord Pool, ENTSO-e, Zonneplan...) zolang de waarde in EUR/kWh is. Venster instelbaar van 8 tot 48 uur, startend om middernacht of nu.
 - **Accu:** twee aparte sensoren (laden W en ontladen W), beide positief.
 - **Huisverbruik** wordt automatisch berekend: `solar + net + accu_ontladen - accu_laden` (net is +/-). Geen aparte entiteit nodig.

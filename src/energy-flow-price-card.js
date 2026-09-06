@@ -397,16 +397,33 @@ class EnergyFlowPriceCard extends LitElement {
     const battCol = battHasEnt ? c.color_battery : GREY;
     const carCol = c.color_car;
 
-    // Cars
+    // Cars. A car with a "charging" (on/off) entity configured can detect a guest
+    // vehicle: if its charger is drawing power but that entity says off, the power
+    // isn't going into the configured car — show a separate "Guest car" node instead
+    // (appears only while that's happening, disappears once the guest stops charging).
+    const guestCars = [];
     const cars = this._cars().map((car, i) => {
       const p = num(this.hass, car.power);
       const soc = num(this.hass, car.soc);
-      return { name: car.name || `${this._t("car")} ${i + 1}`, power: p, soc, active: act(p), hasEnt: !!car.power };
+      const powerActive = act(p);
+      const chargingState = car.charging ? this.hass.states?.[car.charging]?.state : null;
+      const isGuest = !!car.charging && powerActive && chargingState !== "on";
+      if (isGuest) {
+        guestCars.push({ name: this._t("guest_car"), power: p, soc: null, active: true, hasEnt: true });
+      }
+      return {
+        name: car.name || `${this._t("car")} ${i + 1}`,
+        power: isGuest ? 0 : p,
+        soc,
+        active: isGuest ? false : powerActive,
+        hasEnt: !!car.power,
+      };
     });
-    const anyCarActive = cars.some((c2) => c2.active);
-    const carHasEnt = cars.some((c2) => c2.hasEnt);
+    const allCars = [...cars, ...guestCars];
+    const anyCarActive = allCars.some((c2) => c2.active);
+    const carHasEnt = allCars.some((c2) => c2.hasEnt);
     // Always show at least one car node; if none added, show a single placeholder.
-    const carsShown = cars.length ? cars : [{ name: this._t("car"), power: null, soc: null, active: false, hasEnt: false }];
+    const carsShown = allCars.length ? allCars : [{ name: this._t("car"), power: null, soc: null, active: false, hasEnt: false }];
 
     const bs = (() => {
       const r = 23, circ = 2 * Math.PI * r;
@@ -452,7 +469,7 @@ class EnergyFlowPriceCard extends LitElement {
     const solarPow = v.solar;
     const gridPow = v.grid;
     const battPow = v.charge && v.charge > 5 ? v.charge : (v.discharge && v.discharge > 5 ? v.discharge : 0);
-    const carPow = (() => { let m = 0; for (const c2 of cars) { if (c2.active && Math.abs(c2.power) > m) m = Math.abs(c2.power); } return m; })();
+    const carPow = (() => { let m = 0; for (const c2 of allCars) { if (c2.active && Math.abs(c2.power) > m) m = Math.abs(c2.power); } return m; })();
 
     const wSolar = this._wireState("solar", solarPow, false);
     const wGrid = this._wireState("grid", gridPow, gridPow < 0);
@@ -1340,7 +1357,7 @@ class EnergyFlowPriceCard extends LitElement {
 
 customElements.define("energy-flow-price-card", EnergyFlowPriceCard);
 
-console.info("%c energy-flow-price-card %c v1.11.0 ", "background:#7dd3fc;color:#0a1420;font-weight:700", "background:#333;color:#fff");
+console.info("%c energy-flow-price-card %c v1.12.0 ", "background:#7dd3fc;color:#0a1420;font-weight:700", "background:#333;color:#fff");
 
 window.customCards = window.customCards || [];
 window.customCards.push({
