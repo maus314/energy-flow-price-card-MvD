@@ -28,6 +28,27 @@ function normalizePrice(v) {
   return best;
 }
 
+// Determine one scale factor for a whole price series from providers that report scaled
+// integers (e.g. Zonneplan's price_tax_included.amount, x1e7). Uses the median of the
+// series rather than scaling each point independently — a single price spike can't skew
+// the median enough to flip the detected scale, unlike normalizePrice() applied per point.
+function detectPriceScale(rawValues) {
+  const abs = rawValues.map((v) => Math.abs(v)).filter((v) => v > 0);
+  if (!abs.length) return 1;
+  const sorted = [...abs].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  if (median >= 0.005 && median <= 5) return 1; // already plausible EUR/kWh
+  const scales = [1, 10, 100, 1000, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9];
+  let best = 1, bestScore = Infinity;
+  for (const s of scales) {
+    const scaled = median / s;
+    if (scaled < 0.02 || scaled > 2) continue;
+    const score = Math.abs(Math.log(scaled / 0.25));
+    if (score < bestScore) { bestScore = score; best = s; }
+  }
+  return best;
+}
+
 function num(hass, entity) {
   if (!entity || !hass || !hass.states[entity]) return null;
   const v = parseFloat(hass.states[entity].state);
@@ -335,18 +356,21 @@ class EnergyFlowPriceCard extends LitElement {
           p.electricity ?? p.electricity_price ??
           p.price_tax_included?.amount ?? p.price_tax_excluded?.amount;
         const t = from ? new Date(from).getTime() : null;
-        let val = typeof price === "number" ? price : parseFloat(price);
-        if (t && !isNaN(val)) {
-          // Auto-scale providers that report scaled integers (e.g. Zonneplan x1e7).
-          val = normalizePrice(val);
-          if (!seen.has(t)) { seen.add(t); merged.push({ t, v: val }); }
-        }
+        const val = typeof price === "number" ? price : parseFloat(price);
+        if (t && !isNaN(val) && !seen.has(t)) { seen.add(t); merged.push({ t, raw: val }); }
       }
     }
     merged.sort((a, b) => a.t - b.t);
+    // Auto-scale providers that report scaled integers (e.g. Zonneplan x1e7): detect ONE
+    // scale for the whole series (from the median), not per point. Guessing per point let
+    // an individual price spike (e.g. one quarter above ~0.79 EUR/kWh at a x1e7 scale)
+    // occasionally get misjudged as a completely different magnitude than its neighbours,
+    // rendering a false, isolated crash to near-zero exactly where the real price peaked.
+    const scale = detectPriceScale(merged.map((p) => p.raw));
+    const points = merged.map((p) => ({ t: p.t, v: p.raw / scale }));
     let current = num(this.hass, cfg.price_entity);
     if (current !== null) current = normalizePrice(current);
-    return { points: merged, current };
+    return { points, current };
   }
 
   render() {
@@ -1357,7 +1381,7 @@ class EnergyFlowPriceCard extends LitElement {
 
 customElements.define("energy-flow-price-card", EnergyFlowPriceCard);
 
-console.info("%c energy-flow-price-card %c v1.12.0 ", "background:#7dd3fc;color:#0a1420;font-weight:700", "background:#333;color:#fff");
+console.info("%c energy-flow-price-card %c v1.12.1 ", "background:#7dd3fc;color:#0a1420;font-weight:700", "background:#333;color:#fff");
 
 window.customCards = window.customCards || [];
 window.customCards.push({
