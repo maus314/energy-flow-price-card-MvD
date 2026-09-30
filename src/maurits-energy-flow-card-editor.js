@@ -1,0 +1,306 @@
+import { LitElement, html, css, nothing } from "lit";
+import { DEFAULTS, DEFAULT_PRICE_STOPS, PRICE_PROFILES } from "./constants.js";
+import { t, resolveLang } from "./maurits-translations.js";
+
+class MauritsEnergyFlowCardEditor extends LitElement {
+  static get properties() {
+    return { hass: {}, _config: {} };
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+  }
+
+  _t(key) {
+    return t(resolveLang(this._config?.language, this.hass), key);
+  }
+
+  _get(key, fallback) { return this._config?.[key] ?? fallback ?? ""; }
+
+  _emit(next) {
+    this._config = next;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true })
+    );
+  }
+
+  _toggle(key, ev) { this._emit({ ...this._config, [key]: ev.target.checked }); }
+
+  _pickEntity(key, ev) {
+    const v = ev.detail?.value ?? ev.target.value;
+    const next = { ...this._config };
+    if (v) next[key] = v; else delete next[key];
+    this._emit(next);
+  }
+
+  _color(key, ev) { this._emit({ ...this._config, [key]: ev.target.value }); }
+  _hours(ev) { this._emit({ ...this._config, price_hours: parseInt(ev.target.value, 10) }); }
+
+  _resetColors() {
+    const next = { ...this._config };
+    ["color_solar", "color_battery", "color_grid", "color_home"].forEach((k) => { next[k] = DEFAULTS[k]; });
+    next.price_stops = DEFAULT_PRICE_STOPS.map((s) => ({ ...s }));
+    this._emit(next);
+  }
+
+  _stops() {
+    const s = this._config?.price_stops;
+    return Array.isArray(s) && s.length ? s : DEFAULT_PRICE_STOPS;
+  }
+  _stopChange(i, field, ev) {
+    const stops = this._stops().map((s) => ({ ...s }));
+    stops[i][field] = field === "value" ? parseFloat(ev.target.value) : ev.target.value;
+    this._emit({ ...this._config, price_stops: stops });
+  }
+  _addStop() {
+    const stops = this._stops().map((s) => ({ ...s }));
+    const last = stops[stops.length - 1];
+    stops.push({ value: +(last.value + 0.1).toFixed(2), color: last.color });
+    this._emit({ ...this._config, price_stops: stops });
+  }
+  _removeStop(i) {
+    const stops = this._stops().map((s) => ({ ...s }));
+    if (stops.length <= 2) return;
+    stops.splice(i, 1);
+    this._emit({ ...this._config, price_stops: stops });
+  }
+
+  render() {
+    if (!this.hass || !this._config) return nothing;
+    const T = (k) => this._t(k);
+    const showFlow = this._config.show_flow !== false;
+    const showPrice = this._config.show_price !== false;
+    const displayZero = this._config.display_zero === true;
+    const hours = this._config.price_hours ?? 24;
+    const lookbackHours = this._config.price_lookback_hours ?? 2;
+    const lang = this._config.language ?? "auto";
+    const priceProfile = PRICE_PROFILES[this._config.price_profile] ? this._config.price_profile : "default";
+    const useTibberService = this._config.price_use_tibber_service === true;
+
+    const entityFields = [
+      { key: "solar_power", label: T("ed_solar_power") },
+      { key: "grid_power", label: T("ed_grid_power") },
+      { key: "grid_voltage_entity", label: T("ed_grid_voltage") },
+      { key: "battery_charge_power", label: T("ed_battery_charge") },
+      { key: "battery_discharge_power", label: T("ed_battery_discharge") },
+      { key: "battery_soc", label: T("ed_battery_soc") },
+      { key: "grid_import_today_entity", label: T("ed_grid_import_today") },
+      { key: "solar_energy_today_entity", label: T("ed_solar_energy_today") },
+      { key: "current_price_entity", label: T("ed_current_price") },
+      ...(useTibberService ? [] : [{ key: "price_entity", label: T("ed_price_entity") }]),
+      { key: "gas_price_entity", label: T("ed_gas_price_entity") },
+    ];
+    const colorFields = [
+      { key: "color_solar", label: T("ed_color_solar") },
+      { key: "color_battery", label: T("ed_color_battery") },
+      { key: "color_grid", label: T("ed_color_grid") },
+      { key: "color_home", label: T("ed_color_home") },
+    ];
+
+    return html`
+      <div class="root">
+        <div class="section">
+          <div class="head">${T("ed_display")}</div>
+          <ha-formfield label=${T("ed_show_flow")}>
+            <ha-switch .checked=${showFlow} @change=${(e) => this._toggle("show_flow", e)}></ha-switch>
+          </ha-formfield>
+          <ha-formfield label=${T("ed_show_price")}>
+            <ha-switch .checked=${showPrice} @change=${(e) => this._toggle("show_price", e)}></ha-switch>
+          </ha-formfield>
+          <ha-formfield label=${T("ed_display_zero")}>
+            <ha-switch .checked=${displayZero} @change=${(e) => this._toggle("display_zero", e)}></ha-switch>
+          </ha-formfield>
+          <ha-formfield label=${T("ed_battery_ring")}>
+            <ha-switch .checked=${this._config.battery_ring !== false} @change=${(e) => this._toggle("battery_ring", e)}></ha-switch>
+          </ha-formfield>
+          <ha-formfield label=${T("ed_visual_layout")}>
+            <ha-switch .checked=${this._config.use_visual_layout === true} @change=${(e) => this._toggle("use_visual_layout", e)}></ha-switch>
+          </ha-formfield>
+          ${this._config.use_visual_layout === true ? html`
+            <ha-formfield label=${T("ed_reduce_effects")}>
+              <ha-switch .checked=${this._config.reduce_effects === true} @change=${(e) => this._toggle("reduce_effects", e)}></ha-switch>
+            </ha-formfield>` : nothing}
+          <label class="sel-row">
+            <span>${T("ed_wire_style")}</span>
+            <select .value=${this._config.wire_style ?? "modern"} @change=${(e) => this._emit({ ...this._config, wire_style: e.target.value })}>
+              <option value="modern">${T("ed_wire_style_modern")}</option>
+              <option value="solid">${T("ed_wire_style_solid")}</option>
+              <option value="soft-glow">${T("ed_wire_style_soft_glow")}</option>
+              <option value="gradient">${T("ed_wire_style_gradient")}</option>
+              <option value="pulse">${T("ed_wire_style_pulse")}</option>
+              <option value="dashed">${T("ed_wire_style_dashed")}</option>
+              <option value="neon">${T("ed_wire_style_neon")}</option>
+            </select>
+          </label>
+          <label class="sel-row">
+            <span>${T("ed_language")}</span>
+            <select .value=${lang} @change=${(e) => this._emit({ ...this._config, language: e.target.value })}>
+              <option value="auto">${T("ed_lang_auto")}</option>
+              <option value="nl">Nederlands</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="section">
+          <div class="head">${T("ed_entities")}</div>
+          <div class="note">${T("ed_home_note")}</div>
+          <ha-formfield label=${T("ed_price_tibber_service")}>
+            <ha-switch .checked=${useTibberService} @change=${(e) => this._toggle("price_use_tibber_service", e)}></ha-switch>
+          </ha-formfield>
+          <div class="note">${T("ed_price_tibber_service_note")}</div>
+          ${entityFields.map(
+            (f) => html`
+              <ha-entity-picker
+                .hass=${this.hass}
+                .value=${this._get(f.key)}
+                .label=${f.label}
+                allow-custom-entity
+                @value-changed=${(e) => this._pickEntity(f.key, e)}
+              ></ha-entity-picker>`
+          )}
+        </div>
+
+
+        <div class="section">
+          <div class="head">${T("ed_price_window")}</div>
+          <div class="slider-row">
+            <span>${T("ed_hours_shown")}: <b>${hours}u</b></span>
+            <input type="range" min="8" max="48" step="1" .value=${hours} @input=${(e) => this._hours(e)} />
+          </div>
+          <label class="sel-row">
+            <span>${T("ed_start_point")}</span>
+            <select .value=${this._config.price_start ?? "midnight"} @change=${(e) => this._emit({ ...this._config, price_start: e.target.value })}>
+              <option value="midnight">${T("ed_start_midnight")}</option>
+              <option value="now">${T("ed_start_now")}</option>
+            </select>
+          </label>
+          ${this._config.price_start === "now" ? html`
+            <div class="slider-row">
+              <span>${T("ed_lookback_hours")}: <b>${lookbackHours}u</b></span>
+              <input type="range" min="1" max="12" step="1" .value=${lookbackHours}
+                @input=${(e) => this._emit({ ...this._config, price_lookback_hours: parseInt(e.target.value, 10) })} />
+            </div>` : nothing}
+          <ha-formfield label=${T("ed_relative_hours")}>
+            <ha-switch .checked=${this._config.price_relative_hours === true} @change=${(e) => this._toggle("price_relative_hours", e)}></ha-switch>
+          </ha-formfield>
+          <ha-formfield label=${T("ed_day_marker")}>
+            <ha-switch .checked=${this._config.price_show_day_marker === true} @change=${(e) => this._toggle("price_show_day_marker", e)}></ha-switch>
+          </ha-formfield>
+        </div>
+
+        <div class="section">
+          <div class="head">${T("ed_layout")}</div>
+          <div class="note">${T("ed_layout_note")}</div>
+          <label class="sel-row">
+            <span>${T("ed_layout_profile")}</span>
+            <select .value=${priceProfile} @change=${(e) => this._emit({ ...this._config, price_profile: e.target.value })}>
+              <option value="default">${T("ed_profile_default")}</option>
+              <option value="zonneplan">${T("ed_profile_zonneplan")}</option>
+              <option value="tibber">${T("ed_profile_tibber")}</option>
+              <option value="frank">${T("ed_profile_frank")}</option>
+              <option value="anwb">${T("ed_profile_anwb")}</option>
+              <option value="eneco">${T("ed_profile_eneco")}</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="section">
+          <div class="head">${T("ed_chart_tabs")}</div>
+          <div class="note">${T("ed_chart_tabs_note")}</div>
+          <ha-formfield label=${T("ed_chart_auto_scroll")}>
+            <ha-switch .checked=${this._config.chart_auto_scroll === true} @change=${(e) => this._toggle("chart_auto_scroll", e)}></ha-switch>
+          </ha-formfield>
+          ${this._config.chart_auto_scroll === true ? html`
+            <div class="slider-row">
+              <span>${T("ed_chart_scroll_interval")}: <b>${this._config.chart_scroll_interval ?? 8}s</b></span>
+              <input type="range" min="3" max="30" step="1" .value=${this._config.chart_scroll_interval ?? 8}
+                @input=${(e) => this._emit({ ...this._config, chart_scroll_interval: parseInt(e.target.value, 10) })} />
+            </div>` : nothing}
+        </div>
+
+        <div class="section">
+          <div class="head">${T("ed_flow")}</div>
+          <div class="slider-row">
+            <span>${T("ed_flow_speed")}: <b>${(this._config.flow_speed ?? 1).toFixed(1)}×</b></span>
+            <input type="range" min="0.2" max="3" step="0.1" .value=${this._config.flow_speed ?? 1}
+              @input=${(e) => this._emit({ ...this._config, flow_speed: parseFloat(e.target.value) })} />
+          </div>
+          <div class="slider-row">
+            <span>${T("ed_flow_max_power")}: <b>${this._config.flow_max_power ?? 5000} W</b></span>
+            <input type="range" min="500" max="15000" step="500" .value=${this._config.flow_max_power ?? 5000}
+              @input=${(e) => this._emit({ ...this._config, flow_max_power: parseInt(e.target.value, 10) })} />
+          </div>
+          <div class="slider-row">
+            <span>${T("ed_flow_off_delay")}: <b>${this._config.flow_off_delay ?? 20}s</b></span>
+            <input type="range" min="0" max="120" step="5" .value=${this._config.flow_off_delay ?? 20}
+              @input=${(e) => this._emit({ ...this._config, flow_off_delay: parseInt(e.target.value, 10) })} />
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="head">
+            ${T("ed_colors")}
+            <button class="reset" @click=${() => this._resetColors()}>${T("ed_reset_colors")}</button>
+          </div>
+          <div class="grid">
+            ${colorFields.map(
+              (f) => html`
+                <label class="color">
+                  <span>${f.label}</span>
+                  <input type="color" .value=${this._get(f.key, DEFAULTS[f.key])}
+                    @input=${(e) => this._color(f.key, e)} />
+                </label>`
+            )}
+          </div>
+        </div>
+
+        ${priceProfile === "default" ? html`
+          <div class="section">
+            <div class="head">${T("ed_price_scale")}</div>
+            <div class="note">${T("ed_price_scale_note")}</div>
+            ${this._stops().map(
+              (s, i) => html`
+                <div class="stop-row">
+                  <input type="number" step="0.01" .value=${s.value}
+                    @input=${(e) => this._stopChange(i, "value", e)} />
+                  <span class="unit">€/kWh</span>
+                  <input type="color" .value=${s.color}
+                    @input=${(e) => this._stopChange(i, "color", e)} />
+                  <button class="mini" @click=${() => this._removeStop(i)} title=${T("ed_remove")}>✕</button>
+                </div>`
+            )}
+            <button class="add" @click=${() => this._addStop()}>${T("ed_add_point")}</button>
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return css`
+      .root { display: flex; flex-direction: column; gap: 18px; padding: 4px; }
+      .section { display: flex; flex-direction: column; gap: 8px; }
+      .head { font-weight: 600; font-size: 14px; margin-bottom: 2px; color: var(--primary-text-color); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .note { font-size: 11.5px; color: var(--secondary-text-color); line-height: 1.4; }
+      ha-entity-picker { display: block; width: 100%; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .color { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+      .color input[type="color"] { width: 42px; height: 28px; border: none; background: none; cursor: pointer; }
+      .slider-row { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+      .slider-row input[type="range"] { width: 100%; }
+      .sel-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+      .sel-row select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
+      .stop-row { display: flex; align-items: center; gap: 8px; }
+      .stop-row input[type="number"] { width: 80px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); }
+      .stop-row input[type="color"] { width: 42px; height: 28px; border: none; background: none; cursor: pointer; }
+      .stop-row .unit { font-size: 12px; color: var(--secondary-text-color); }
+      .reset, .add, .mini { cursor: pointer; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-color); border-radius: 8px; padding: 5px 10px; font-size: 12px; }
+      .mini { border-color: var(--error-color, #ef4444); color: var(--error-color, #ef4444); padding: 2px 8px; }
+      .add { align-self: flex-start; }
+    `;
+  }
+}
+
+customElements.define("maurits-energy-flow-card-editor", MauritsEnergyFlowCardEditor);

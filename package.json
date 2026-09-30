@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Compact energy flow + quarter-hour price card for Home Assistant (Frank Energie friendly).",
   "type": "module",
-  "main": "dist/energy-flow-price-card.js",
+  "main": "maurits-energy-flow-card.js",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c --watch"

@@ -1,5 +1,29 @@
 # Energy Flow & Price Card
 
+> **Maurits variant:** this branch also ships the independent `custom:maurits-energy-flow-card` resource. It has its own source, editor, custom-element name and bundle, so it can be installed beside `custom:energy-flow-price-card` without replacing it. The Maurits card deliberately has no car configuration or car branch.
+
+## Maurits Energy Flow Card
+
+Build this branch with `npm run build`, then add `maurits-energy-flow-card.js` as a JavaScript module resource in Home Assistant. Add the card with:
+
+```yaml
+type: custom:maurits-energy-flow-card
+show_flow: true
+show_price: true
+solar_power: sensor.solar_power
+grid_power: sensor.p1_power
+grid_voltage_entity: sensor.grid_voltage
+battery_charge_power: sensor.battery_charge
+battery_discharge_power: sensor.battery_discharge
+battery_soc: sensor.battery_soc
+grid_import_today_entity: sensor.grid_import_today
+solar_energy_today_entity: sensor.solar_energy_today
+current_price_entity: sensor.current_electricity_price
+price_entity: sensor.electricity_price
+```
+
+The Maurits variant preserves the solar, home, grid import/export, battery charge/discharge and battery-SoC ring flow display. It also retains the price, solar-production, battery-SoC and home-usage chart tabs, including their existing flow animations and visual-layout options. On Home Assistant Sections dashboards it requests a full-width, tall grid tile; on Masonry dashboards the larger rendered content determines the card height. Its graphical editor intentionally exposes no car entity, car ring, car color or car settings.
+
 ![Energy Flow & Price Card - default abstract layout](images/EnergyFLowPriceCard.gif)
 ![Energy Flow & Price Card - visual layout with a house photo](images/EnergyFLowPriceCard2.gif)
 
