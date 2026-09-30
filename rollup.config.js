@@ -1,11 +1,22 @@
 import resolve from "@rollup/plugin-node-resolve";
 
-export default {
-  input: "src/energy-flow-price-card.js",
-  output: {
-    file: "dist/energy-flow-price-card.js",
-    format: "es",
-    inlineDynamicImports: true,
+export default [
+  {
+    input: "src/energy-flow-price-card.js",
+    output: {
+      file: "dist/energy-flow-price-card.js",
+      format: "es",
+      inlineDynamicImports: true,
+    },
+    plugins: [resolve()],
   },
-  plugins: [resolve()],
-};
+  {
+    input: "src/maurits-energy-flow-card.js",
+    output: {
+      file: "maurits-energy-flow-card.js",
+      format: "es",
+      inlineDynamicImports: true,
+    },
+    plugins: [resolve()],
+  },
+];
