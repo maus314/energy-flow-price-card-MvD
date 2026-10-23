@@ -129,9 +129,6 @@ const TRANSLATIONS = {
     import: "import",
     export: "export",
     charging: "charging",
-    info_grid_import_today: "Today",
-    info_solar_energy_today: "Solar today",
-    info_current_price: "Current price",
     discharging: "discharging",
     // charts
     price_title: "Rates",
@@ -170,9 +167,6 @@ const TRANSLATIONS = {
     ed_battery_charge: "Battery charge (W)",
     ed_battery_discharge: "Battery discharge (W)",
     ed_battery_soc: "Battery SoC (%)",
-    ed_grid_import_today: "Grid import today (kWh)",
-    ed_solar_energy_today: "Solar energy today (kWh)",
-    ed_current_price: "Current energy price (€/kWh)",
     ed_price_tibber_service: "Fetch prices via the Tibber service (tibber.get_prices)",
     ed_price_tibber_service_note: "For Tibber setups where the sensor has no price-array attribute. Calls the tibber.get_prices service directly instead of using a price entity — requires the Tibber integration, no price entity needed. Uses the first Tibber home found.",
     ed_price_entity: "Price provider entity (€/kWh or your currency)",
@@ -223,9 +217,6 @@ const TRANSLATIONS = {
     import: "import",
     export: "export",
     charging: "laden",
-    info_grid_import_today: "Vandaag",
-    info_solar_energy_today: "Solar vandaag",
-    info_current_price: "Huidige prijs",
     discharging: "ontladen",
     price_title: "Tarieven",
     solar_today: "Solar vandaag",
@@ -262,9 +253,6 @@ const TRANSLATIONS = {
     ed_battery_charge: "Accu laden (W)",
     ed_battery_discharge: "Accu ontladen (W)",
     ed_battery_soc: "Accu SoC (%)",
-    ed_grid_import_today: "Netafname vandaag (kWh)",
-    ed_solar_energy_today: "Zonne-energie vandaag (kWh)",
-    ed_current_price: "Huidige energieprijs (€/kWh)",
     ed_price_tibber_service: "Prijzen ophalen via de Tibber-service (tibber.get_prices)",
     ed_price_tibber_service_note: "Voor Tibber-opstellingen waarbij de sensor geen prijs-array-attribuut heeft. Roept de service tibber.get_prices rechtstreeks aan in plaats van een prijs-entiteit te gebruiken — vereist de Tibber-integratie, geen prijs-entiteit nodig. Gebruikt het eerste gevonden Tibber-huis.",
     ed_price_entity: "Prijs energieleverancier (€/kWh)",
@@ -316,9 +304,6 @@ const TRANSLATIONS = {
     export: "Export",
     charging: "laden",
     discharging: "entladen",
-    info_grid_import_today: "Heute",
-    info_solar_energy_today: "Solar heute",
-    info_current_price: "Aktueller Preis",
     price_title: "Tarife",
     solar_today: "Solar heute",
     battery_today: "Akku SoC heute",
@@ -354,9 +339,6 @@ const TRANSLATIONS = {
     ed_battery_charge: "Akku laden (W)",
     ed_battery_discharge: "Akku entladen (W)",
     ed_battery_soc: "Akku SoC (%)",
-    ed_grid_import_today: "Netzbezug heute (kWh)",
-    ed_solar_energy_today: "Solarenergie heute (kWh)",
-    ed_current_price: "Aktueller Energiepreis (€/kWh)",
     ed_price_tibber_service: "Preise über den Tibber-Dienst abrufen (tibber.get_prices)",
     ed_price_tibber_service_note: "Für Tibber-Konfigurationen, bei denen der Sensor kein Preis-Array-Attribut hat. Ruft den Dienst tibber.get_prices direkt auf, statt eine Preis-Entität zu verwenden — erfordert die Tibber-Integration, keine Preis-Entität nötig. Verwendet das erste gefundene Tibber-Zuhause.",
     ed_price_entity: "Preis-Anbieter Entität (€/kWh)",
@@ -498,9 +480,6 @@ class MauritsEnergyFlowCardEditor extends i {
       { key: "battery_charge_power", label: T("ed_battery_charge") },
       { key: "battery_discharge_power", label: T("ed_battery_discharge") },
       { key: "battery_soc", label: T("ed_battery_soc") },
-      { key: "grid_import_today_entity", label: T("ed_grid_import_today") },
-      { key: "solar_energy_today_entity", label: T("ed_solar_energy_today") },
-      { key: "current_price_entity", label: T("ed_current_price") },
       ...(useTibberService ? [] : [{ key: "price_entity", label: T("ed_price_entity") }]),
       { key: "gas_price_entity", label: T("ed_gas_price_entity") },
     ];
@@ -770,16 +749,6 @@ function num(hass, entity) {
   return isNaN(v) ? null : v;
 }
 
-function fmtEnergy(kwh) {
-  if (kwh === null) return "–";
-  return `${kwh.toFixed(1).replace(".", ",")} kWh`;
-}
-
-function fmtPrice(price) {
-  if (price === null) return "–";
-  return `€ ${normalizePrice(price).toFixed(3).replace(".", ",")}/kWh`;
-}
-
 function fmtVoltage(voltage) {
   return voltage === null ? "" : `${Math.round(voltage)} V`;
 }
@@ -890,9 +859,6 @@ class MauritsEnergyFlowCard extends i {
       battery_charge_power: "",
       battery_discharge_power: "",
       battery_soc: "",
-      grid_import_today_entity: "",
-      solar_energy_today_entity: "",
-      current_price_entity: "",
       price_entity: "",
     };
   }
@@ -1126,12 +1092,6 @@ class MauritsEnergyFlowCard extends i {
       soc: num(this.hass, c.battery_soc),
     };
     const home = this._homePower(v);
-    const info = {
-      gridImportToday: num(this.hass, c.grid_import_today_entity),
-      solarEnergyToday: num(this.hass, c.solar_energy_today_entity),
-      currentPrice: num(this.hass, c.current_price_entity),
-    };
-
     const battValue = (v.charge && v.charge > 5) ? v.charge : (v.discharge && v.discharge > 5) ? v.discharge : (v.charge ?? v.discharge);
     const battLabel = v.charge && v.charge > 5 ? this._t("charging") : v.discharge && v.discharge > 5 ? this._t("discharging") : "";
 
@@ -1329,21 +1289,6 @@ class MauritsEnergyFlowCard extends i {
                 <ha-icon icon="mdi:battery-charging"></ha-icon>
               </div>`}
           <div class="txt"><span class="lbl">${this._t("battery")}${battHasEnt && v.soc !== null ? b` · <b style="color:${battCol}">${Math.round(v.soc)}%</b>` : A}</span><span class="val" style="color:${battCol}">${fmtPower(battValue)}</span>${battLabel ? b`<span class="sub" style="color:${battCol}">${battLabel}</span>` : A}</div>
-        </div>
-
-        <div class="infozone">
-          <div class="infoitem ${c.grid_import_today_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_grid_import_today")}</span>
-            <span class="infoval" style="color:${gridCol}">${fmtEnergy(info.gridImportToday)}</span>
-          </div>
-          <div class="infoitem ${c.solar_energy_today_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_solar_energy_today")}</span>
-            <span class="infoval" style="color:${solarCol}">${fmtEnergy(info.solarEnergyToday)}</span>
-          </div>
-          <div class="infoitem ${c.current_price_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_current_price")}</span>
-            <span class="infoval">${fmtPrice(info.currentPrice)}</span>
-          </div>
         </div>
 
         ${visual ? b`<div class="huis-wire"></div>` : A}
@@ -1905,7 +1850,7 @@ class MauritsEnergyFlowCard extends i {
     return i$3`
       ha-card { padding: 12px; }
       .stack { display: flex; flex-direction: column; gap: 20px; }
-      .flow { position: relative; height: clamp(280px, 45vw, 380px); min-height: 280px; }
+      .flow { position: relative; height: clamp(250px, 34vw, 310px); min-height: 250px; }
       .housepic { position: absolute; top: 0; left: 50%; height: 100%; width: auto; max-width: none; transform: translateX(-50%); pointer-events: none; z-index: 0; }
       .wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
       .wire { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 2.5; }
@@ -1947,11 +1892,6 @@ class MauritsEnergyFlowCard extends i {
       .socring { position: absolute; inset: 0; }
 
 
-      .infozone { position: absolute; right: 12px; bottom: 16px; z-index: 2; display: flex; flex-direction: column; gap: 6px; min-width: 170px; max-width: 230px; padding: 11px 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: color-mix(in srgb, var(--card-background-color, #1c1c2e) 86%, transparent); box-shadow: 0 3px 12px rgba(0,0,0,.18); text-align: right; }
-      .infoitem { display: flex; flex-direction: column; gap: 1px; }
-      .infoitem.muted { opacity: .55; }
-      .infolabel { font-size: 12px; color: var(--secondary-text-color); }
-      .infoval { font-size: 18px; font-weight: 700; color: var(--info-color, #7dd3fc); white-space: nowrap; }
 
       .huis { position: absolute; left: 50%; top: 54.7%; transform: translate(-50%, -29px); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
       .huis.huis-visual { left: 50%; top: 50%; align-items: flex-end; text-align: right; transform: translate(calc(-100% - 110px), -50%); }
@@ -2018,7 +1958,7 @@ class MauritsEnergyFlowCard extends i {
       .usage-legend-item i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
 
       @media (max-width: 520px) {
-        .flow { height: 280px; }
+        .flow { height: 250px; }
         .node { gap: 8px; }
         .node .ic, .socwrap { width: 52px; height: 52px; border-radius: 14px; }
         .node .ic ha-icon { --mdc-icon-size: 28px; }
@@ -2029,9 +1969,6 @@ class MauritsEnergyFlowCard extends i {
         .huis .ic { width: 62px; height: 62px; border-radius: 16px; }
         .huis .ic ha-icon { --mdc-icon-size: 32px; }
         .huis .val { font-size: 20px; }
-        .infozone { right: 8px; bottom: 10px; min-width: 132px; padding: 8px 10px; gap: 4px; }
-        .infolabel { font-size: 10px; }
-        .infoval { font-size: 14px; }
         .chdr .t { font-size: 15px; }
         .chdr .now { font-size: 13px; }
         .tab { padding: 4px 10px; font-size: 12px; }

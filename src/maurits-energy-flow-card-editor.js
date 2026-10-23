@@ -84,9 +84,6 @@ class MauritsEnergyFlowCardEditor extends LitElement {
       { key: "battery_charge_power", label: T("ed_battery_charge") },
       { key: "battery_discharge_power", label: T("ed_battery_discharge") },
       { key: "battery_soc", label: T("ed_battery_soc") },
-      { key: "grid_import_today_entity", label: T("ed_grid_import_today") },
-      { key: "solar_energy_today_entity", label: T("ed_solar_energy_today") },
-      { key: "current_price_entity", label: T("ed_current_price") },
       ...(useTibberService ? [] : [{ key: "price_entity", label: T("ed_price_entity") }]),
       { key: "gas_price_entity", label: T("ed_gas_price_entity") },
     ];

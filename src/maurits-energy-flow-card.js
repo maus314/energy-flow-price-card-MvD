@@ -55,16 +55,6 @@ function num(hass, entity) {
   return isNaN(v) ? null : v;
 }
 
-function fmtEnergy(kwh) {
-  if (kwh === null) return "–";
-  return `${kwh.toFixed(1).replace(".", ",")} kWh`;
-}
-
-function fmtPrice(price) {
-  if (price === null) return "–";
-  return `€ ${normalizePrice(price).toFixed(3).replace(".", ",")}/kWh`;
-}
-
 function fmtVoltage(voltage) {
   return voltage === null ? "" : `${Math.round(voltage)} V`;
 }
@@ -175,9 +165,6 @@ class MauritsEnergyFlowCard extends LitElement {
       battery_charge_power: "",
       battery_discharge_power: "",
       battery_soc: "",
-      grid_import_today_entity: "",
-      solar_energy_today_entity: "",
-      current_price_entity: "",
       price_entity: "",
     };
   }
@@ -411,12 +398,6 @@ class MauritsEnergyFlowCard extends LitElement {
       soc: num(this.hass, c.battery_soc),
     };
     const home = this._homePower(v);
-    const info = {
-      gridImportToday: num(this.hass, c.grid_import_today_entity),
-      solarEnergyToday: num(this.hass, c.solar_energy_today_entity),
-      currentPrice: num(this.hass, c.current_price_entity),
-    };
-
     const battValue = (v.charge && v.charge > 5) ? v.charge : (v.discharge && v.discharge > 5) ? v.discharge : (v.charge ?? v.discharge);
     const battLabel = v.charge && v.charge > 5 ? this._t("charging") : v.discharge && v.discharge > 5 ? this._t("discharging") : "";
 
@@ -614,21 +595,6 @@ class MauritsEnergyFlowCard extends LitElement {
                 <ha-icon icon="mdi:battery-charging"></ha-icon>
               </div>`}
           <div class="txt"><span class="lbl">${this._t("battery")}${battHasEnt && v.soc !== null ? html` · <b style="color:${battCol}">${Math.round(v.soc)}%</b>` : nothing}</span><span class="val" style="color:${battCol}">${fmtPower(battValue)}</span>${battLabel ? html`<span class="sub" style="color:${battCol}">${battLabel}</span>` : nothing}</div>
-        </div>
-
-        <div class="infozone">
-          <div class="infoitem ${c.grid_import_today_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_grid_import_today")}</span>
-            <span class="infoval" style="color:${gridCol}">${fmtEnergy(info.gridImportToday)}</span>
-          </div>
-          <div class="infoitem ${c.solar_energy_today_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_solar_energy_today")}</span>
-            <span class="infoval" style="color:${solarCol}">${fmtEnergy(info.solarEnergyToday)}</span>
-          </div>
-          <div class="infoitem ${c.current_price_entity ? "" : "muted"}">
-            <span class="infolabel">${this._t("info_current_price")}</span>
-            <span class="infoval">${fmtPrice(info.currentPrice)}</span>
-          </div>
         </div>
 
         ${visual ? html`<div class="huis-wire"></div>` : nothing}
@@ -1191,7 +1157,7 @@ class MauritsEnergyFlowCard extends LitElement {
     return css`
       ha-card { padding: 12px; }
       .stack { display: flex; flex-direction: column; gap: 20px; }
-      .flow { position: relative; height: clamp(280px, 45vw, 380px); min-height: 280px; }
+      .flow { position: relative; height: clamp(250px, 34vw, 310px); min-height: 250px; }
       .housepic { position: absolute; top: 0; left: 50%; height: 100%; width: auto; max-width: none; transform: translateX(-50%); pointer-events: none; z-index: 0; }
       .wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
       .wire { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 2.5; }
@@ -1233,11 +1199,6 @@ class MauritsEnergyFlowCard extends LitElement {
       .socring { position: absolute; inset: 0; }
 
 
-      .infozone { position: absolute; right: 12px; bottom: 16px; z-index: 2; display: flex; flex-direction: column; gap: 6px; min-width: 170px; max-width: 230px; padding: 11px 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: color-mix(in srgb, var(--card-background-color, #1c1c2e) 86%, transparent); box-shadow: 0 3px 12px rgba(0,0,0,.18); text-align: right; }
-      .infoitem { display: flex; flex-direction: column; gap: 1px; }
-      .infoitem.muted { opacity: .55; }
-      .infolabel { font-size: 12px; color: var(--secondary-text-color); }
-      .infoval { font-size: 18px; font-weight: 700; color: var(--info-color, #7dd3fc); white-space: nowrap; }
 
       .huis { position: absolute; left: 50%; top: 54.7%; transform: translate(-50%, -29px); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
       .huis.huis-visual { left: 50%; top: 50%; align-items: flex-end; text-align: right; transform: translate(calc(-100% - 110px), -50%); }
@@ -1304,7 +1265,7 @@ class MauritsEnergyFlowCard extends LitElement {
       .usage-legend-item i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
 
       @media (max-width: 520px) {
-        .flow { height: 280px; }
+        .flow { height: 250px; }
         .node { gap: 8px; }
         .node .ic, .socwrap { width: 52px; height: 52px; border-radius: 14px; }
         .node .ic ha-icon { --mdc-icon-size: 28px; }
@@ -1315,9 +1276,6 @@ class MauritsEnergyFlowCard extends LitElement {
         .huis .ic { width: 62px; height: 62px; border-radius: 16px; }
         .huis .ic ha-icon { --mdc-icon-size: 32px; }
         .huis .val { font-size: 20px; }
-        .infozone { right: 8px; bottom: 10px; min-width: 132px; padding: 8px 10px; gap: 4px; }
-        .infolabel { font-size: 10px; }
-        .infoval { font-size: 14px; }
         .chdr .t { font-size: 15px; }
         .chdr .now { font-size: 13px; }
         .tab { padding: 4px 10px; font-size: 12px; }
